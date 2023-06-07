@@ -27,9 +27,18 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         const usersCollection = client.db('tropicTalks').collection('users')
+        const classCollection = client.db('tropicTalks').collection('classes')
+
+
+        // class related apis
+        app.get('/classes', async(req, res)=>{
+            const query = {status: "approved"}
+            const result = await classCollection.find(query).toArray()
+            res.send(result)
+        })
 
         // user related apis
         app.post('/users', async (req, res) => {
