@@ -2,7 +2,7 @@ const express = require('express')
 const app = express()
 require('dotenv').config()
 const jwt = require('jsonwebtoken')
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors')
 const port = process.env.PORT || 5000;
 
@@ -79,21 +79,35 @@ async function run() {
             if (email !== decodedEmail) {
                 return res.status(403).send({ error: true, message: 'Forbidden Access' })
             }
-             const query = {email: email}
-             const result = await selectedCollection.find(query).toArray()
-             res.send(result)
+            const query = { email: email }
+            const result = await selectedCollection.find(query).toArray()
+            res.send(result)
         })
 
         app.post('/select', async (req, res) => {
             const selectedClass = req.body;
-            const query = {classId: selectedClass._id}
-            
+
+            const query = {
+                $and: [
+                    { classId: selectedClass.classId },
+                    { email: selectedClass.email }
+                ]
+            }
+        
             const isExist = await selectedCollection.findOne(query)
-            if(isExist){
-                return res.send('exists')
+            
+            if (isExist) {
+                return res.send({ message: 'exists' })
             }
 
             const result = await selectedCollection.insertOne(selectedClass)
+            res.send(result)
+        })
+
+        app.delete('/select/:id', verifyJWT, async(req, res)=>{
+            const id = req.params.id;
+            const filter = {_id: new ObjectId(id)}
+            const result = await selectedCollection.deleteOne(filter)
             res.send(result)
         })
 
