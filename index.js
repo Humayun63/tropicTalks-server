@@ -50,6 +50,7 @@ async function run() {
 
         const usersCollection = client.db('tropicTalks').collection('users')
         const classCollection = client.db('tropicTalks').collection('classes')
+        const selectedCollection = client.db('tropicTalks').collection('selectedClasses')
 
 
         // Create JWT Token
@@ -64,6 +65,35 @@ async function run() {
         app.get('/classes', async (req, res) => {
             const query = { status: "approved" }
             const result = await classCollection.find(query).toArray()
+            res.send(result)
+        })
+
+
+        app.get('/select', verifyJWT, async (req, res) => {
+            const email = req.query.email
+            if (!email) {
+                res.send([])
+            }
+
+            const decodedEmail = req.decoded.email
+            if (email !== decodedEmail) {
+                return res.status(403).send({ error: true, message: 'Forbidden Access' })
+            }
+             const query = {email: email}
+             const result = await selectedCollection.find(query).toArray()
+             res.send(result)
+        })
+
+        app.post('/select', async (req, res) => {
+            const selectedClass = req.body;
+            const query = {classId: selectedClass._id}
+            
+            const isExist = await selectedCollection.findOne(query)
+            if(isExist){
+                return res.send('exists')
+            }
+
+            const result = await selectedCollection.insertOne(selectedClass)
             res.send(result)
         })
 
