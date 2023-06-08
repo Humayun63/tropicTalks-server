@@ -91,6 +91,12 @@ async function run() {
             const result = await classCollection.find(query).toArray()
             res.send(result)
         })
+        
+        app.post('/classes', verifyJWT, verifyInstructor, async(req, res)=>{
+            const newClass = req.body;
+            const result = await classCollection.insertOne(newClass)
+            res.send(result)
+        })
 
 
         app.get('/select', verifyJWT, async (req, res) => {
