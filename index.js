@@ -144,11 +144,16 @@ async function run() {
             const query = { email: email }
 
             const result = await paymentCollection.find(query).sort({ date: -1 }).toArray();
-            
+
             res.send(result)
         })
 
         // user related apis
+        app.get('/users', verifyJWT, async(req, res)=>{
+            const result = await usersCollection.find().toArray()
+            res.send(result)
+        })
+
         app.post('/users', async (req, res) => {
             const user = req.body;
             const query = { email: user.email }
