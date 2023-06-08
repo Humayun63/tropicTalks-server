@@ -114,6 +114,22 @@ async function run() {
             res.send(result)
         })
 
+        // enrolled classes apis
+        app.get('/enrolled', verifyJWT, async (req, res) => {
+            const email = req.query.email
+            if (!email) {
+                res.send([])
+            }
+
+            const decodedEmail = req.decoded.email
+            if (email !== decodedEmail) {
+                return res.status(403).send({ error: true, message: 'Forbidden Access' })
+            }
+            const query = { email: email }
+            const result = await enrolledCollection.find(query).toArray()
+            res.send(result)
+        })
+
         // user related apis
         app.post('/users', async (req, res) => {
             const user = req.body;
@@ -154,14 +170,20 @@ async function run() {
 
             // insert classes to enrolled
             const classIds = payment.classIds;
-            const enrolledClasses = await classCollection.find({ _id: { $in: classIds.map((id) => new ObjectId(id)) } }).toArray();
-            const addEnroll = await enrolledCollection.insertMany(enrolledClasses);
+            console.log(classIds)
+            const enrolledClasses = await classCollection.find({ _id: { $in: classIds.map((id) => new ObjectId(id)) } }).toArray()
+            const enrolledClassesWithEmail = enrolledClasses.map((enrolledClass) => {
+                return { ...enrolledClass, email: payment.email, classId: enrolledClass._id, _id: undefined };
+            });
+
+            const addEnroll = await enrolledCollection.insertMany(enrolledClassesWithEmail);
 
             // update available seats
             const updateClassesResult = await classCollection.updateMany(
                 { _id: { $in: classIds.map((id) => new ObjectId(id)) } },
                 { $inc: { available_seats: -1 } }
             );
+
 
             res.send({ insertedResult, deleteResult, addEnroll, updateClassesResult });
         });
