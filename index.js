@@ -63,11 +63,22 @@ async function run() {
             res.send({ token })
         })
 
+        // verify admin
         const verifyAdmin = async (req, res, next) => {
             const email = req.decoded.email;
             const query = { email: email };
             const user = await usersCollection.findOne(query)
             if (user?.role !== 'admin') {
+                return res.status(403).send({ error: true, message: 'Forbidden Access' })
+            }
+            next()
+        }
+        // verify instructor
+        const verifyInstructor = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email };
+            const user = await usersCollection.findOne(query)
+            if (user?.role !== 'instructor') {
                 return res.status(403).send({ error: true, message: 'Forbidden Access' })
             }
             next()
