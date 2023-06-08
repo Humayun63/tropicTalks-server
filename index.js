@@ -130,6 +130,24 @@ async function run() {
             res.send(result)
         })
 
+        // payment history apis
+        app.get('/payment-history', verifyJWT, async (req, res) => {
+            const email = req.query.email
+            if (!email) {
+                res.send([])
+            }
+
+            const decodedEmail = req.decoded.email
+            if (email !== decodedEmail) {
+                return res.status(403).send({ error: true, message: 'Forbidden Access' })
+            }
+            const query = { email: email }
+
+            const result = await paymentCollection.find(query).sort({ date: -1 }).toArray();
+            
+            res.send(result)
+        })
+
         // user related apis
         app.post('/users', async (req, res) => {
             const user = req.body;
