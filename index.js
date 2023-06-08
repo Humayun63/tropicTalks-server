@@ -149,7 +149,7 @@ async function run() {
         })
 
         // user related apis
-        app.get('/users', verifyJWT, async(req, res)=>{
+        app.get('/users', verifyJWT, async (req, res) => {
             const result = await usersCollection.find().toArray()
             res.send(result)
         })
@@ -163,6 +163,48 @@ async function run() {
                 return res.send({ message: 'Already Exits' })
             }
             const result = await usersCollection.insertOne(user)
+            res.send(result)
+        })
+
+        // make admin or instructor
+        app.patch('/users/:id', async (req, res) => {
+            const id = req.params.id
+            const role = req.body.role;
+            const filter = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    role: role
+                },
+            }
+            const result = await usersCollection.updateOne(filter, updateDoc)
+            res.send(result)
+        })
+
+        // Check admin
+        app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+
+            if (req.decoded.email !== email) {
+                return res.send({ admin: false })
+            }
+
+            const query = { email: email }
+            const user = await usersCollection.findOne(query)
+            const result = { admin: user?.role === 'admin' }
+            res.send(result)
+        })
+
+        // check instructor
+        app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+
+            if (req.decoded.email !== email) {
+                return res.send({ instructor: false })
+            }
+
+            const query = { email: email }
+            const user = await usersCollection.findOne(query)
+            const result = { instructor: user?.role === 'instructor' }
             res.send(result)
         })
 
