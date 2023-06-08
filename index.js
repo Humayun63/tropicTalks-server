@@ -91,11 +91,49 @@ async function run() {
             const result = await classCollection.find(query).toArray()
             res.send(result)
         })
-        
-        app.post('/classes', verifyJWT, verifyInstructor, async(req, res)=>{
+
+        app.get('/all-class', verifyJWT, verifyAdmin, async (req, res) => {
+            const result = await classCollection.find().toArray()
+            res.send(result)
+        })
+
+        app.post('/classes', verifyJWT, verifyInstructor, async (req, res) => {
             const newClass = req.body;
             const result = await classCollection.insertOne(newClass)
             res.send(result)
+        })
+
+        app.patch('/all-class/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const body = req.body;
+            const query = { _id: new ObjectId(id) }
+            const updateFields = {};
+            if (body.feedback) {
+                updateFields.feedback = body.feedback;
+            }
+            if (body.status) {
+                updateFields.status = body.status;
+            }
+
+            const result = await classCollection.updateOne(query, { $set: updateFields })
+            res.send(result)
+        })
+
+        app.get('/instructor/class', verifyJWT, async (req, res) => {
+            const email = req.query.email
+            if (!email) {
+                res.send([])
+            }
+            console.log(email)
+
+            const decodedEmail = req.decoded.email
+            if (email !== decodedEmail) {
+                return res.status(403).send({ error: true, message: 'Forbidden Access' })
+            }
+            const query = { "instructor_details.instructor_email": email }
+            const result = await classCollection.find(query).toArray()
+            res.send(result)
+
         })
 
 
@@ -181,6 +219,12 @@ async function run() {
             res.send(result)
         })
 
+        app.get('/instructors', async(req, res) =>{
+            const query = {role: 'instructor'}
+            const result = await usersCollection.find(query).toArray()
+            res.send(result)
+        })
+
         app.post('/users', async (req, res) => {
             const user = req.body;
             const query = { email: user.email }
@@ -192,6 +236,7 @@ async function run() {
             const result = await usersCollection.insertOne(user)
             res.send(result)
         })
+
 
         // make admin or instructor
         app.patch('/users/:id', verifyJWT, verifyAdmin, async (req, res) => {
@@ -273,7 +318,7 @@ async function run() {
             // update available seats
             const updateClassesResult = await classCollection.updateMany(
                 { _id: { $in: classIds.map((id) => new ObjectId(id)) } },
-                { $inc: { available_seats: -1 } }
+                { $inc: { available_seats: -1, enrolled: 1 } }
             );
 
 
