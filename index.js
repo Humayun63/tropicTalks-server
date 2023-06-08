@@ -4,6 +4,7 @@ require('dotenv').config()
 const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors')
+const stripe = require('stripe')(process.env.PAYMENT_TOKEN)
 const port = process.env.PORT || 5000;
 
 
@@ -51,6 +52,8 @@ async function run() {
         const usersCollection = client.db('tropicTalks').collection('users')
         const classCollection = client.db('tropicTalks').collection('classes')
         const selectedCollection = client.db('tropicTalks').collection('selectedClasses')
+        const enrolledCollection = client.db('tropicTalks').collection('enrolledClasses')
+        const paymentCollection = client.db('tropicTalks').collection('payments')
 
 
         // Create JWT Token
@@ -93,9 +96,9 @@ async function run() {
                     { email: selectedClass.email }
                 ]
             }
-        
+
             const isExist = await selectedCollection.findOne(query)
-            
+
             if (isExist) {
                 return res.send({ message: 'exists' })
             }
@@ -104,9 +107,9 @@ async function run() {
             res.send(result)
         })
 
-        app.delete('/select/:id', verifyJWT, async(req, res)=>{
+        app.delete('/select/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
-            const filter = {_id: new ObjectId(id)}
+            const filter = { _id: new ObjectId(id) }
             const result = await selectedCollection.deleteOne(filter)
             res.send(result)
         })
@@ -124,6 +127,44 @@ async function run() {
             res.send(result)
         })
 
+
+        // Create payment
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+            const { price } = req.body;
+            const amount = parseFloat((price * 100).toFixed());
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            })
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+
+        // payment related apis
+        app.post('/payments', verifyJWT, async (req, res) => {
+            // insert payment information
+            const payment = req.body;
+            const insertedResult = await paymentCollection.insertOne(payment);
+
+            // Delete from selected classes
+            const query = { _id: { $in: payment.selectedItemsIds.map(id => new ObjectId(id)) } };
+            const deleteResult = await selectedCollection.deleteMany(query);
+
+            // insert classes to enrolled
+            const classIds = payment.classIds;
+            const enrolledClasses = await classCollection.find({ _id: { $in: classIds.map((id) => new ObjectId(id)) } }).toArray();
+            const addEnroll = await enrolledCollection.insertMany(enrolledClasses);
+
+            // update available seats
+            const updateClassesResult = await classCollection.updateMany(
+                { _id: { $in: classIds.map((id) => new ObjectId(id)) } },
+                { $inc: { available_seats: -1 } }
+            );
+
+            res.send({ insertedResult, deleteResult, addEnroll, updateClassesResult });
+        });
 
 
         // Send a ping to confirm a successful connection
