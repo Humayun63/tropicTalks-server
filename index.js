@@ -97,7 +97,7 @@ async function run() {
             res.send(result)
         })
 
-        app.get('/popular-classes', async(req, res)=>{
+        app.get('/popular-classes', async (req, res) => {
             const result = await classCollection.find().sort({ enrolled: -1 }).limit(6).toArray()
             res.send(result)
         })
@@ -224,8 +224,8 @@ async function run() {
             res.send(result)
         })
 
-        app.get('/instructors', async(req, res) =>{
-            const query = {role: 'instructor'}
+        app.get('/instructors', async (req, res) => {
+            const query = { role: 'instructor' }
             const result = await usersCollection.find(query).toArray()
             res.send(result)
         })
